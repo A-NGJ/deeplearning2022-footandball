@@ -1,10 +1,10 @@
 [DEFAULT]
 
-issia_path=/data/share/jacek/issia
+issia_path=/work3/s210500/deeplearning2022-footandball/datasets/issia
 issia_train_cameras=1,2,3,4
 issia_val_cameras=5,6
 
-spd_path=/data/share/jacek/SoccerPlayerDetection_bmvc17_v1
+spd_path=/work3/s210500/deeplearning2022-footandball/datasets/SoccerPlayerDetection_bmvc17_v1
 spd_set=1,2
 
 epochs=20
@@ -13,3 +13,4 @@ batch_size=12
 num_workers=8
 
 model=fb1
+
