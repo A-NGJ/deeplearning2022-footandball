@@ -33,6 +33,12 @@ class Params:
 
         # SOCCER_NET
         self.soccer_net_path = os.path.expandvars(params.get("soccer_net_path"))
+        if self.soccer_net_path is not None:
+            temp = params.get("soccer_net_set")
+            if temp is not None:
+                self.soccer_net_set = temp.split(",")
+            else:
+                self.soccer_net_set = None
 
         self.num_workers = params.getint("num_workers", 0)
         self.batch_size = params.getint("batch_size", 4)

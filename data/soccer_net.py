@@ -2,15 +2,13 @@ from collections import defaultdict
 import csv
 import os
 from pathlib import Path
+import typing as t
 
 import numpy as np
 from PIL import Image
 import torch
 
-from data.augmentation import (
-    PLAYER_LABEL,
-    BALL_LABEL,
-)
+from data import augmentation
 
 
 class SoccerNet(torch.utils.data.Dataset):
@@ -35,37 +33,39 @@ class SoccerNet(torch.utils.data.Dataset):
         return image, boxes, labels
 
     # pylint: disable=too-many-locals
-    def collect(self) -> dict:
+    def collect(self, ids: t.Optional[t.List[str]] = None) -> dict:
         """
         Collects data from soccer net data sets
 
-        Requires
-        --------
-        ENV SOCCER_NET_PATH : absolute path to soccer net directory set as environment variable
+        Parameters
+        ----------
+        ids : Optional[List[str]]
+            List of dataset ids to be included in the merged dataset
         """
 
         path = os.path
 
-        soccer_net_path = os.getenv("SOCCER_NET_PATH")
-        assert soccer_net_path, "missing env SOCCER_NET_PATH"
-
-        abs_path = path.join(soccer_net_path, self.data_path)
+        if not ids:
+            ids = [subdir.name for subdir in Path(self.data_path).glob("SNMOT*")]
 
         annotation_files = []
         image_annotations = defaultdict(list)
 
-        for subdir in Path(abs_path).glob("SNMOT*"):
-            for file_ in os.listdir(path.join(abs_path, subdir, "det")):
-                annotation_files.append(path.join(abs_path, subdir, "det", file_))
+        for subdir in Path(self.data_path).glob("SNMOT*"):
+            if subdir.name in ids:
+                for file_ in os.listdir(path.join(self.data_path, subdir, "det")):
+                    annotation_files.append(
+                        path.join(self.data_path, subdir, "det", file_)
+                    )
 
         for annotated_file in annotation_files:
-            st, sample = annotated_file.split("/")[-4:-2]
-            imgpath = "{0:s}/{1:s}/img1/{2:0>6d}.jpg"
+            sample = annotated_file.split("/")[-3]
+            imgpath = "{0:s}/img1/{1:0>6d}.jpg"
 
             with open(annotated_file, "r", encoding="utf-8") as rfile:
                 for row in csv.reader(rfile.readlines()):
                     frame, _, x, y, w, h = [int(x) for x in row[:6]]
-                    image_annotations[imgpath.format(st, sample, frame)].append(
+                    image_annotations[imgpath.format(sample, frame)].append(
                         [x, y, x + w, y + h]
                     )
 
@@ -95,8 +95,42 @@ class SoccerNet(torch.utils.data.Dataset):
         for i, (x1, y1, x2, y2) in enumerate(self.gt[idx]):
             bboxes.append((x1, y1, x2, y2))
             if i == ball_idx:
-                labels.append(BALL_LABEL)
+                labels.append(augmentation.BALL_LABEL)
             else:
-                labels.append(PLAYER_LABEL)
+                labels.append(augmentation.PLAYER_LABEL)
 
         return np.array(bboxes, dtype=float), np.array(labels, dtype=np.int64)
+
+
+def create_dataset(path: str, mode: str, ids: t.Optional[t.List[str]] = None):
+    """
+    Create merged dataset with applied transform.
+
+    Parameters
+    ----------
+    path : str
+        Path to dataset
+    mode : str {train|val}
+        Dataset mode. Augmentation is applied for train.
+    ids : Optional[List[str]]
+        List of dataset ids to be included in the merged dataset
+
+    Returns
+    -------
+    dataset
+        Merged dataset
+    """
+    assert mode in ("train", "val")
+    assert os.path.exists(path), f"cannot find dataset {path}"
+
+    image_size = (720, 1280)
+    if mode == "train":
+        transform = augmentation.TrainAugmentation(image_size)
+    else:
+        # mode == "val"
+        transform = augmentation.NoAugmentation(image_size)
+
+    soccer_net = SoccerNet(path, transform)
+    soccer_net.collect(ids)
+
+    return soccer_net

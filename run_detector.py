@@ -60,7 +60,7 @@ def run_detector(model, args):
     model.print_summary(show_architecture=False)
     model = model.to(args.device)
 
-    _, file_name = os.path.split(args.path)
+    # _, file_name = os.path.split(args.path)
 
     if args.device == "cpu":
         print("Loading CPU weights...")
