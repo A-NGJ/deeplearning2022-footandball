@@ -6,8 +6,18 @@ import random
 import torch
 from torch.utils.data import Sampler, DataLoader, ConcatDataset
 
-from data.issia_dataset import create_issia_dataset, IssiaDataset
-from data.spd_bmvc2017_dataset import create_spd_dataset
+from data.issia_dataset import (
+    create_issia_dataset,
+    IssiaDataset,
+)
+from data.soccer_net import (
+    create_soccer_net_dataset,
+    SoccerNet,
+)
+from data.spd_bmvc2017_dataset import (
+    create_spd_dataset,
+    SpdDataset,
+)
 from misc.config import Params
 
 
@@ -31,11 +41,16 @@ def make_dataloaders(params: Params):
                 only_ball_frames=True,
             )
 
-    if params.spd_set is None:
-        train_spd_dataset = None
-    else:
+    train_spd_dataset = None
+    if params.spd_set:
         train_spd_dataset = create_spd_dataset(
             params.spd_path, params.spd_set, mode="train"
+        )
+
+    train_soccer_net_dataset = None
+    if params.soccer_net_path:
+        train_soccer_net_dataset = create_soccer_net_dataset(
+            params.soccer_net_path, params.soccer_net_set, mode="train"
         )
 
     dataloaders = {}
@@ -48,7 +63,9 @@ def make_dataloaders(params: Params):
             collate_fn=my_collate,
         )
 
-    train_dataset = ConcatDataset([train_issia_dataset, train_spd_dataset])
+    train_dataset = ConcatDataset(
+        [train_issia_dataset, train_spd_dataset, train_soccer_net_dataset]
+    )
     batch_sampler = BalancedSampler(train_dataset)
     dataloaders["train"] = DataLoader(
         train_dataset,
@@ -80,19 +97,24 @@ class BalancedSampler(Sampler):
     def generate_samples(self):
         # Sample generation function expects concatenation of 2 datasets: one is ISSIA CNR and the other is SPD
         # or only one ISSIA CNR dataset.
-        assert len(self.data_source.datasets) <= 2
+        assert len(self.data_source.datasets) <= 3
         issia_dataset_ndx = None
         spd_dataset_ndx = None
+        soccer_net_ndx = None
         for ndx, ds in enumerate(self.data_source.datasets):
-            if isinstance(ds, IssiaDataset):
-                issia_dataset_ndx = ndx
-            else:
-                spd_dataset_ndx = ndx
+            match ds:
+                case IssiaDataset():
+                    issia_dataset_ndx = ndx
+                case SpdDataset():
+                    spd_dataset_ndx = ndx
+                case SoccerNet():
+                    soccer_net_ndx = ndx
 
         assert (
             issia_dataset_ndx is not None
         ), "Training data must contain ISSIA CNR dataset."
 
+        # ISSIA
         issia_ds = self.data_source.datasets[issia_dataset_ndx]
         n_ball_images = len(issia_ds.ball_images_ndx)
         # no_ball_images = 0.5 * ball_images
@@ -109,10 +131,12 @@ class BalancedSampler(Sampler):
                 for e in issia_samples_ndx
             ]
 
+        # SPD BMVC17
         if spd_dataset_ndx is not None:
-            spd_dataset = self.data_source.datasets[spd_dataset_ndx]
-            n_spd_images = min(len(spd_dataset), int(0.5 * n_ball_images))
-            spd_samples_ndx = random.sample(range(len(spd_dataset)), k=n_spd_images)
+            dataset = self.data_source.datasets[spd_dataset_ndx]
+            # TODO: do we really need that
+            n_images = min(len(dataset), int(0.5 * n_ball_images))
+            spd_samples_ndx = random.sample(range(len(dataset)), k=n_images)
             if spd_dataset_ndx > 0:
                 # Add sizes of previous datasets to create cummulative indexes
                 spd_samples_ndx = [
@@ -120,10 +144,19 @@ class BalancedSampler(Sampler):
                     for e in spd_samples_ndx
                 ]
         else:
-            n_spd_images = 0
             spd_samples_ndx = []
 
-        self.sample_ndx = issia_samples_ndx + spd_samples_ndx
+        # Soccer Net
+        if soccer_net_ndx:
+            dataset = self.data_source.datasets[soccer_net_ndx]
+            soccer_net_samples_ndx = range(len(dataset))
+            if soccer_net_ndx > 0:
+                soccer_net_samples_ndx = [
+                    elem + self.data_source.cummulative_sizes[soccer_net_ndx - 1]
+                    for elem in soccer_net_samples_ndx
+                ]
+
+        self.sample_ndx = issia_samples_ndx + spd_samples_ndx + soccer_net_samples_ndx
         random.shuffle(self.sample_ndx)
 
     def __iter__(self):
@@ -131,7 +164,7 @@ class BalancedSampler(Sampler):
         for ndx in self.sample_ndx:
             yield ndx
 
-    def __len(self):
+    def __len__(self):
         return len(self.sample_ndx)
 
 

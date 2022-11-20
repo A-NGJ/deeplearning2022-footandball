@@ -23,7 +23,7 @@ class SoccerNet(torch.utils.data.Dataset):
 
     def __getitem__(self, idx: int):
         img_path = self.image_list[idx]
-        image = Image.open(img_path)
+        image = Image.open(os.path.join(self.data_path, img_path))
         boxes, labels = self.get_annotations(idx)
         if self.transform is not None:
             image, boxes, labels = self.transform((image, boxes, labels))
@@ -82,27 +82,29 @@ class SoccerNet(torch.utils.data.Dataset):
         bboxes = []
         labels = []
 
-        min_ = np.inf
-        ball_idx = 0
-        # find the ball as a smallest bounding box
-        for (x1, y1, x2, y2) in self.gt[idx]:
-            size = x2 - x1 + y2 - y1
-            if size < min_:
-                min_ = size
-                ball_idx = idx
+        # min_ = np.inf
+        # ball_idx = 0
+        # # find the ball as a smallest bounding box
+        # for (x1, y1, x2, y2) in self.gt[idx]:
+        #     size = x2 - x1 + y2 - y1
+        #     if size < min_:
+        #         min_ = size
+        #         ball_idx = idx
 
         # Add annotations
-        for i, (x1, y1, x2, y2) in enumerate(self.gt[idx]):
+        for _, (x1, y1, x2, y2) in enumerate(self.gt[idx]):
             bboxes.append((x1, y1, x2, y2))
-            if i == ball_idx:
-                labels.append(augmentation.BALL_LABEL)
-            else:
-                labels.append(augmentation.PLAYER_LABEL)
+            # if i == ball_idx:
+            labels.append(augmentation.BALL_LABEL)
+            # else:
+            #     labels.append(augmentation.PLAYER_LABEL)
 
         return np.array(bboxes, dtype=float), np.array(labels, dtype=np.int64)
 
 
-def create_dataset(path: str, mode: str, ids: t.Optional[t.List[str]] = None):
+def create_soccer_net_dataset(
+    path: str, ids: t.Optional[t.List[str]] = None, mode: str = "train"
+):
     """
     Create merged dataset with applied transform.
 
