@@ -59,7 +59,7 @@ class SoccerNet(torch.utils.data.Dataset):
                     )
 
         for annotated_file in annotation_files:
-            sample = annotated_file.split("/")[-3]
+            sample = annotated_file.split(os.sep)[-3]
             imgpath = "{0:s}/img1/{1:0>6d}.jpg"
 
             with open(annotated_file, "r", encoding="utf-8") as rfile:
