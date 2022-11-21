@@ -22,8 +22,9 @@ from misc.config import Params
 
 
 def make_dataloaders(params: Params):
-    if params.issia_path is None:
+    if not params.issia_path:
         train_issia_dataset = None
+        val_issia_dataset = None
     else:
         train_issia_dataset = create_issia_dataset(
             params.issia_path,
@@ -64,7 +65,15 @@ def make_dataloaders(params: Params):
         )
 
     train_dataset = ConcatDataset(
-        [train_issia_dataset, train_spd_dataset, train_soccer_net_dataset]
+        [
+            dataset
+            for dataset in [
+                train_issia_dataset,
+                train_spd_dataset,
+                train_soccer_net_dataset,
+            ]
+            if dataset
+        ]
     )
     batch_sampler = BalancedSampler(train_dataset)
     dataloaders["train"] = DataLoader(
@@ -111,27 +120,33 @@ class BalancedSampler(Sampler):
                     soccer_net_ndx = ndx
 
         assert (
-            issia_dataset_ndx is not None
-        ), "Training data must contain ISSIA CNR dataset."
+            any((issia_dataset_ndx, soccer_net_ndx, spd_dataset_ndx)),
+        ), "training must contain at least one dataset"
+        # assert (
+        #     issia_dataset_ndx is not None
+        # ), "Training data must contain ISSIA CNR dataset."
 
         # ISSIA
-        issia_ds = self.data_source.datasets[issia_dataset_ndx]
-        n_ball_images = len(issia_ds.ball_images_ndx)
-        # no_ball_images = 0.5 * ball_images
-        n_no_ball_images = min(
-            len(issia_ds.no_ball_images_ndx), int(0.5 * n_ball_images)
-        )
-        issia_samples_ndx = list(issia_ds.ball_images_ndx) + random.sample(
-            issia_ds.no_ball_images_ndx, n_no_ball_images
-        )
-        if issia_dataset_ndx > 0:
-            # Add sizes of previous datasets to create cummulative indexes
-            issia_samples_ndx = [
-                e + self.data_source.cummulative_sizes[issia_dataset_ndx - 1]
-                for e in issia_samples_ndx
-            ]
+        issia_samples_ndx = []
+        if issia_dataset_ndx is not None:
+            issia_ds = self.data_source.datasets[issia_dataset_ndx]
+            n_ball_images = len(issia_ds.ball_images_ndx)
+            # no_ball_images = 0.5 * ball_images
+            n_no_ball_images = min(
+                len(issia_ds.no_ball_images_ndx), int(0.5 * n_ball_images)
+            )
+            issia_samples_ndx = list(issia_ds.ball_images_ndx) + random.sample(
+                issia_ds.no_ball_images_ndx, n_no_ball_images
+            )
+            if issia_dataset_ndx > 0:
+                # Add sizes of previous datasets to create cummulative indexes
+                issia_samples_ndx = [
+                    e + self.data_source.cummulative_sizes[issia_dataset_ndx - 1]
+                    for e in issia_samples_ndx
+                ]
 
         # SPD BMVC17
+        spd_samples_ndx = []
         if spd_dataset_ndx is not None:
             dataset = self.data_source.datasets[spd_dataset_ndx]
             # TODO: do we really need that
@@ -143,13 +158,13 @@ class BalancedSampler(Sampler):
                     e + self.data_source.cummulative_sizes[spd_dataset_ndx - 1]
                     for e in spd_samples_ndx
                 ]
-        else:
-            spd_samples_ndx = []
 
         # Soccer Net
+        soccer_net_samples_ndx = []
         if soccer_net_ndx:
             dataset = self.data_source.datasets[soccer_net_ndx]
-            soccer_net_samples_ndx = range(len(dataset))
+            n_images = min(len(dataset), int(0.5 * n_ball_images))
+            soccer_net_samples_ndx = random.sample(range(len(dataset)), k=n_images)
             if soccer_net_ndx > 0:
                 soccer_net_samples_ndx = [
                     elem + self.data_source.cummulative_sizes[soccer_net_ndx - 1]

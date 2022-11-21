@@ -18,22 +18,25 @@ class Params:
         params = config["DEFAULT"]
 
         # ISSIA
-        self.issia_path = os.path.expandvars(params.get("issia_path", None))
-        if self.issia_path is not None:
+        self.issia_path = os.path.expandvars(params.get("issia_path", ""))
+        self.issia_train_cameras, self.issia_val_cameras = [], []
+        if self.issia_path:
             temp = params.get("issia_train_cameras", "1, 2, 3, 4")
             self.issia_train_cameras = [int(e) for e in temp.split(",")]
             temp = params.get("issia_val_cameras", "5, 6")
             self.issia_val_cameras = [int(e) for e in temp.split(",")]
 
         # SPD BMVC17
-        self.spd_path = os.path.expandvars(params.get("spd_path", None))
-        if self.spd_path is not None:
+        self.spd_path = os.path.expandvars(params.get("spd_path", ""))
+        self.spd_set = []
+        if self.spd_path:
             temp = params.get("spd_set", "1, 2")
             self.spd_set = [int(e) for e in temp.split(",")]
 
         # SOCCER_NET
-        self.soccer_net_path = os.path.expandvars(params.get("soccer_net_path"))
-        if self.soccer_net_path is not None:
+        self.soccer_net_path = os.path.expandvars(params.get("soccer_net_path", ""))
+        self.soccer_net_set = []
+        if self.soccer_net_path:
             temp = params.get("soccer_net_set")
             if temp is not None:
                 self.soccer_net_set = temp.split(",")
@@ -51,18 +54,23 @@ class Params:
         self._check_params()
 
     def _check_params(self):
+        if not any((self.issia_path, self.spd_path, self.soccer_net_path)):
+            raise ValueError("at least one dataset must be provided")
         # ISSIA
-        assert os.path.exists(
-            self.issia_path
-        ), f"Cannot access ISSIA CNR dataset: {self.issia_path}"
+        if self.issia_path:
+            assert os.path.exists(
+                self.issia_path
+            ), f"Cannot access ISSIA CNR dataset: {self.issia_path}"
         # SPD BMVC17
-        assert os.path.exists(
-            self.spd_path
-        ), f"Cannot access SoccerPlayerDetection_bmvc17 dataset: {self.spd_path}"
+        if self.spd_path:
+            assert os.path.exists(
+                self.spd_path
+            ), f"Cannot access SoccerPlayerDetection_bmvc17 dataset: {self.spd_path}"
         # SOCCER_NET
-        assert os.path.exists(
-            self.soccer_net_path
-        ), f"Cannot access Soccer Net dataset: {self.soccer_net_path}"
+        if self.soccer_net_path:
+            assert os.path.exists(
+                self.soccer_net_path
+            ), f"Cannot access Soccer Net dataset: {self.soccer_net_path}"
 
         for c in self.issia_train_cameras:
             assert (
