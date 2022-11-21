@@ -9,7 +9,7 @@
 import argparse
 import pickle
 import os
-import time
+import shutil
 
 import numpy as np
 import torch
@@ -18,15 +18,14 @@ import tqdm
 
 from data.data_reader import make_dataloaders
 from misc.config import Params
+from misc import utils
 from network import footandball
 from network.ssd_loss import SSDLoss
 
 MODEL_FOLDER = "models"
 
 
-def train_model(
-    model, optimizer, scheduler, num_epochs, dataloaders, device, model_name
-):
+def train_model(model, optimizer, scheduler, num_epochs, dataloaders, device, run_time):
     # Weight for components of the loss function.
     # Ball-related loss and player-related loss are mean losses (loss per one positive example)
     alpha_l_player = 0.01
@@ -124,22 +123,25 @@ def train_model(
         scheduler.step()
         print("")
 
-    model_filepath = os.path.join(MODEL_FOLDER, model_name + "_final" + ".pth")
+    model_filepath = os.path.join("run/train", run_time, "model.pth")
     torch.save(model.state_dict(), model_filepath)
 
-    with open(f"training_stats_{model_name}.pickle", "wb") as handle:
+    with open(
+        f"run/train/{run_time}/training_stats.pickle",
+        "wb",
+    ) as handle:
         pickle.dump(training_stats, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     return training_stats
 
 
-def train(params: Params):
-    if not os.path.exists(MODEL_FOLDER):
-        os.mkdir(MODEL_FOLDER)
+def train(params: Params, run_time: str):
+    # if not os.path.exists(MODEL_FOLDER):
+    #     os.mkdir(MODEL_FOLDER)
 
-    assert os.path.exists(
-        MODEL_FOLDER
-    ), f" Cannot create folder to save trained model: {MODEL_FOLDER}"
+    # assert os.path.exists(
+    #     MODEL_FOLDER
+    # ), f" Cannot create folder to save trained model: {MODEL_FOLDER}"
 
     dataloaders = make_dataloaders(params)
     print(f"Training set: Dataset size: {len(dataloaders['train'].dataset)}")
@@ -152,8 +154,8 @@ def train(params: Params):
     model.print_summary(show_architecture=True)
     model = model.to(device)
 
-    model_name = "model_" + time.strftime("%Y%m%d_%H%M")
-    print(f"Model name: {model_name}")
+    # model_name = "model_" + run_time
+    # print(f"Model name: {model_name}")
 
     optimizer = optim.Adam(model.parameters(), lr=params.lr)
     scheduler_milestones = [int(params.epochs * 0.75)]
@@ -161,7 +163,13 @@ def train(params: Params):
         optimizer, scheduler_milestones, gamma=0.1
     )
     train_model(
-        model, optimizer, scheduler, params.epochs, dataloaders, device, model_name
+        model,
+        optimizer,
+        scheduler,
+        params.epochs,
+        dataloaders,
+        device,
+        run_time,
     )
 
 
@@ -180,10 +188,21 @@ if __name__ == "__main__":
     print(f"Config path: {args.config}")
     print(f"Debug mode: {args.debug}")
 
+    # general run history directory
+    if not os.path.exists("runs/train"):
+        os.makedirs("runs/train")
+
+    run_time = utils.get_current_time()
+    run_dir = f"runs/train/{run_time}"
+    # run specific history directory
+    if not os.path.exists(run_dir):
+        os.mkdir(run_dir)
+    shutil.copy(args.config, os.path.join(run_dir, "config.txt"))
+
     params = Params(args.config)
     params.print()
 
-    train(params)
+    train(params, run_time)
 
 
 """

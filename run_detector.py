@@ -6,13 +6,16 @@
 # Run FootAndBall detector on ISSIA-CNR Soccer videos
 #
 
-import torch
-import cv2
 import os
 import argparse
-import tqdm
 
-import network.footandball as footandball
+import torch
+import cv2
+import tqdm
+import json
+
+from misc import utils
+from network import footandball
 import data.augmentation as augmentations
 from data.augmentation import PLAYER_LABEL, BALL_LABEL
 
@@ -160,8 +163,8 @@ if __name__ == "__main__":
 
     assert os.path.exists(
         args.weights
-    ), "Cannot find FootAndBall model weights: {}".format(args.weights)
-    assert os.path.exists(args.path), "Cannot open video: {}".format(args.path)
+    ), f"Cannot find FootAndBall model weights: {args.weights}"
+    assert os.path.exists(args.path), f"Cannot open video: {args.path}"
 
     model = footandball.model_factory(
         args.model,
@@ -170,4 +173,17 @@ if __name__ == "__main__":
         player_threshold=args.player_threshold,
     )
 
+    # general run history directory
+    if not os.path.exists("runs/test"):
+        os.makedirs("runs/test")
+
+    # run specific history directory
+    run_dir = f"runs/test/{utils.get_current_time()}"
+    os.mkdir(run_dir)
+    with open(
+        os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
+    ) as wfile:
+        json.dump(args.__dict__, wfile, indent=2)
+
+    args.out_video = os.path.join(run_dir, args.out_video)
     run_detector(model, args)
