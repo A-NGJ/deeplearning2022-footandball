@@ -1,4 +1,8 @@
 #!/bin/sh
+
+date=$(date +%Y%m%d_%H%M)
+mkdir runs/test/$date
+
 ### General options
 ### –- specify queue --
 #BSUB -q gpuv100
@@ -18,7 +22,7 @@
 ### -- set the email address --
 ### please uncomment the following line and put in your e-mail address,
 ### if you want to receive e-mail notifications on a non-default address
-#BSUB -u s210500@dtu.dk
+#BSUB -u s210500@student.dtu.dk
 ### -- send notification at start --
 ###BSUB -B
 ### -- send notification at completion--
@@ -30,11 +34,10 @@
 # -- end of LSF options --
 
 # Load env
-source /work3/s210500/deeplearning2022-footandball/venv_activate.sh
+source $HPC_PATH/venv_activate.sh
 
-##python run_detector.py --path video_Trim.avi --weights models/model_20201019_1416_final.pth --out_video out_video.avi --device cuda
+# run detection
+python run_detector.py --path video_Trim.avi --weights models/model_20201019_1416_final.pth --out_video out_video.avi --device cuda
 
-python3 train_detector.py --config config.txt
-
-
+mv job_out/* runs/test/$date
 
