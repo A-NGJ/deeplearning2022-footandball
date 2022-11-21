@@ -159,6 +159,10 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+
+# hpc files ignore
+datasets
+job_out
 # dev files
 dev*
 
