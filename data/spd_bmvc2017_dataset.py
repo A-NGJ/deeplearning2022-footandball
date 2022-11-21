@@ -15,15 +15,14 @@ import os
 
 import torch
 
-import data.augmentation as augmentation
-from data.augmentation import PLAYER_LABEL
+from data import augmentation
 
 
 class SpdDataset(torch.utils.data.Dataset):
     # Read images from the spd_bmvc17_dataset
     def __init__(self, root, ndx, transform):
         """
-        Args:
+        Args:deeplearning2022-footandball/data/spd_bmvc2017_dataset.py
             root: Dataset root
             ndx: Dataset index (1 or 2)
             transform: Optional transform to be applied on a sample
@@ -72,7 +71,7 @@ class SpdDataset(torch.utils.data.Dataset):
         # Add annotations for the player position
         for (x1, y1, x2, y2) in self.gt[ndx]:
             boxes.append((x1, y1, x2, y2))
-            labels.append(PLAYER_LABEL)
+            labels.append(augmentation.PLAYER_LABEL)
 
         return np.array(boxes, dtype=np.float), np.array(labels, dtype=np.int64)
 

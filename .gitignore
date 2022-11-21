@@ -163,3 +163,8 @@ cython_debug/
 # hpc files ignore
 datasets
 job_out
+# dev files
+dev*
+
+# VSCode
+.vscode
