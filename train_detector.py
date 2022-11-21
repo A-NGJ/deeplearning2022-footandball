@@ -6,20 +6,20 @@
 # Train FootAndBall detector on ISSIA-CNR Soccer and SoccerPlayerDetection dataset
 #
 
-import tqdm
 import argparse
 import pickle
-import numpy as np
 import os
 import time
 
+import numpy as np
 import torch
-import torch.optim as optim
+from torch import optim
+import tqdm
 
-from network import footandball
 from data.data_reader import make_dataloaders
-from network.ssd_loss import SSDLoss
 from misc.config import Params
+from network import footandball
+from network.ssd_loss import SSDLoss
 
 MODEL_FOLDER = "models"
 
@@ -52,7 +52,7 @@ def train_model(
     training_stats = {"train": [], "val": []}
 
     print("Training...")
-    for epoch in tqdm.tqdm(range(num_epochs)):
+    for _ in tqdm.tqdm(range(num_epochs)):
         # Each epoch has a training and validation phase
         # for phase in ['train', 'val']:
         for phase in phases:
@@ -70,7 +70,7 @@ def train_model(
 
             count_batches = 0
             # Iterate over data.
-            for ndx, (images, boxes, labels) in enumerate(dataloaders[phase]):
+            for _, (images, boxes, labels) in enumerate(dataloaders[phase]):
                 images = images.to(device)
                 h, w = images.shape[-2], images.shape[-1]
                 gt_maps = model.groundtruth_maps(boxes, labels, (h, w))
@@ -105,7 +105,7 @@ def train_model(
 
             # Average stats per batch
             avg_batch_stats = {}
-            for e in batch_stats:
+            for e, _ in batch_stats.items():
                 avg_batch_stats[e] = np.mean(batch_stats[e])
 
             training_stats[phase].append(avg_batch_stats)
@@ -127,7 +127,7 @@ def train_model(
     model_filepath = os.path.join(MODEL_FOLDER, model_name + "_final" + ".pth")
     torch.save(model.state_dict(), model_filepath)
 
-    with open("training_stats_{}.pickle".format(model_name), "wb") as handle:
+    with open(f"training_stats_{model_name}.pickle", "wb") as handle:
         pickle.dump(training_stats, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     return training_stats
@@ -139,14 +139,12 @@ def train(params: Params):
 
     assert os.path.exists(
         MODEL_FOLDER
-    ), " Cannot create folder to save trained model: {}".format(MODEL_FOLDER)
+    ), f" Cannot create folder to save trained model: {MODEL_FOLDER}"
 
     dataloaders = make_dataloaders(params)
-    print("Training set: Dataset size: {}".format(len(dataloaders["train"].dataset)))
+    print(f"Training set: Dataset size: {len(dataloaders['train'].dataset)}")
     if "val" in dataloaders:
-        print(
-            "Validation set: Dataset size: {}".format(len(dataloaders["val"].dataset))
-        )
+        print(f"Validation set: Dataset size: {len(dataloaders['val'].dataset)}")
 
     # Create model
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -155,7 +153,7 @@ def train(params: Params):
     model = model.to(device)
 
     model_name = "model_" + time.strftime("%Y%m%d_%H%M")
-    print("Model name: {}".format(model_name))
+    print(f"Model name: {model_name}")
 
     optimizer = optim.Adam(model.parameters(), lr=params.lr)
     scheduler_milestones = [int(params.epochs * 0.75)]
@@ -179,8 +177,8 @@ if __name__ == "__main__":
     parser.add_argument("--debug", dest="debug", help="debug mode", action="store_true")
     args = parser.parse_args()
 
-    print("Config path: {}".format(args.config))
-    print("Debug mode: {}".format(args.debug))
+    print(f"Config path: {args.config}")
+    print(f"Debug mode: {args.debug}")
 
     params = Params(args.config)
     params.print()
