@@ -111,17 +111,14 @@ class BalancedSampler(Sampler):
         spd_dataset_ndx = None
         soccer_net_ndx = None
         for ndx, ds in enumerate(self.data_source.datasets):
-            match ds:
-                case IssiaDataset():
-                    issia_dataset_ndx = ndx
-                case SpdDataset():
-                    spd_dataset_ndx = ndx
-                case SoccerNet():
-                    soccer_net_ndx = ndx
+            if isinstance(ds, IssiaDataset):
+                issia_dataset_ndx = ndx
+            elif isinstance(ds, SpdDataset):
+                spd_dataset_ndx = ndx
+            elif isinstance(ds, SoccerNet):
+                soccer_net_ndx = ndx
 
-        assert (
-            any((issia_dataset_ndx, soccer_net_ndx, spd_dataset_ndx)),
-        ), "training must contain at least one dataset"
+        assert (any((issia_dataset_ndx, soccer_net_ndx, spd_dataset_ndx)), "training must contain at least one dataset")
         # assert (
         #     issia_dataset_ndx is not None
         # ), "Training data must contain ISSIA CNR dataset."

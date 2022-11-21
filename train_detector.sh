@@ -33,14 +33,11 @@ mkdir runs/train/$date
 #BSUB -e job_out/training%J.err
 # -- end of LSF options --
 
+# data path 
+source ./dev.env
+
 ## Load env
-source /work3/s210500/deeplearning2022-footandball/dev.env 
-source $HPC_PATH/venv_activate.sh
-# source /work3/s210500/deeplearning2022-footandball/venv_activate.sh
+source ./venv_activate.sh
 
 ## run training
 python3 train_detector.py --config config1.txt
-
-
-# mv job_out/* runs/train/$date
-
