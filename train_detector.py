@@ -123,11 +123,11 @@ def train_model(model, optimizer, scheduler, num_epochs, dataloaders, device, ru
         scheduler.step()
         print("")
 
-    model_filepath = os.path.join("run/train", run_time, "model.pth")
+    model_filepath = os.path.join("runs/train", run_time, "model.pth")
     torch.save(model.state_dict(), model_filepath)
 
     with open(
-        f"run/train/{run_time}/training_stats.pickle",
+        f"runs/train/{run_time}/training_stats.pickle",
         "wb",
     ) as handle:
         pickle.dump(training_stats, handle, protocol=pickle.HIGHEST_PROTOCOL)
@@ -204,6 +204,7 @@ if __name__ == "__main__":
 
     train(params, run_time)
 
+    print("Finished")
 
 """
 NOTES:
