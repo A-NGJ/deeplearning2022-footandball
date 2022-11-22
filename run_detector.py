@@ -181,7 +181,7 @@ if __name__ == "__main__":
     run_dir = f"runs/test/{utils.get_current_time()}"
     if not os.path.exists(run_dir):
         os.mkdir(run_dir)
-        
+
     with open(
         os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
     ) as wfile:
