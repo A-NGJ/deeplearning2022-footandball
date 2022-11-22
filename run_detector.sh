@@ -5,11 +5,11 @@ mkdir runs/test/$date
 
 ### General options
 ### –- specify queue --
-#BSUB -q gpuv100
+#BSUB -q gpua100
 ### -- set the job Name --
 #BSUB -J training
 ### -- ask for number of cores (default: 1) --
-#BSUB -n 8
+#BSUB -n 1
 ### -- Choose cpu model
 ###BSUB -R "select[model == XeonGold6226R]"
 ### -- Select the resources: 1 gpu in exclusive process mode --
@@ -33,11 +33,12 @@ mkdir runs/test/$date
 #BSUB -e job_out/training%J.err
 # -- end of LSF options --
 
+# data path 
+source ./dev.env
+
 # Load env
-source $HPC_PATH/venv_activate.sh
+source ./venv_activate.sh
 
 # run detection
-python run_detector.py --path video_Trim.avi --weights models/model_20201019_1416_final.pth --out_video out_video.avi --device cuda
-
-mv job_out/* runs/test/$date
+python3 run_detector.py --path video_1sec.mp4 --weights models/model_20201019_1416_final.pth --out_video out_video.avi --device cuda
 

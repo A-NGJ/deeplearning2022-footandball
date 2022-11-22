@@ -5,11 +5,11 @@ mkdir runs/train/$date
 
 ### General options
 ### –- specify queue --
-#BSUB -q gpuv100
+#BSUB -q gpua100
 ### -- set the job Name --
 #BSUB -J training
 ### -- ask for number of cores (default: 1) --
-#BSUB -n 16
+#BSUB -n 8
 ### -- Choose cpu model
 ###BSUB -R "select[model == XeonGold6226R]"
 ### -- Select the resources: 1 gpu in exclusive process mode --
@@ -33,11 +33,11 @@ mkdir runs/train/$date
 #BSUB -e job_out/training%J.err
 # -- end of LSF options --
 
+# data path 
+source ./dev.env
+
 ## Load env
-source $HPC_PATH/venv_activate.sh
+source ./venv_activate.sh
 
 ## run training
 python3 train_detector.py --config config1.txt
-
-
-mv job_out/* runs/train/$date
