@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# List of GPU queues
+# gpua100, gpuv100, gpua10, gpua40
+
 ### General options
 ### –- specify queue --
 #BSUB -q gpua100
@@ -45,7 +48,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # run detection
-python3 run_detector.py --path ${DATA_PATH}/veo/veo1-short.mp4 --weights models/model_20201019_1416_final.pth --out_video out_video.avi --device cuda
+python3 run_detector.py --path ${DATA_PATH}/veo/veo1-short.mp4 --weights models/model_20201019_1416_final.pth --out_video out_video.avi --device cuda --run-dir ${REPO}/runs/test/${date}
 
 if [[ $? -ne 0 ]]; then
     exit 1

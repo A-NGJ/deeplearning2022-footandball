@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# List of GPU queues
+# gpua100, gpuv100, gpua10, gpua40
+
 ### General options
 ### –- specify queue --
 #BSUB -q gpua100
@@ -34,7 +37,7 @@
 source ./dev.env
 
 date=$(date +%Y%m%d_%H%M)
-mkdir ${REPO}/runs/train/$date
+mkdir ${REPO}/runs/train/${date}
 
 # Activate venv
 module load python3/3.10.7
@@ -45,7 +48,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 ## run training
-python3 train_detector.py --config config1.txt
+python3 train_detector.py --config config1.txt --run-dir ${REPO}/runs/train/${date}
 
 if [[ $? -ne 0 ]]; then
     exit 1
