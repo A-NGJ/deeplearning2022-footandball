@@ -36,6 +36,11 @@
 # Load environmental variables
 source ./dev.env
 
+# Create job_out if it is not present
+if [[ ! -d ${REPO}/job_out ]]; then
+    mkdir ${REPO}/job_out
+fi
+
 date=$(date +%Y%m%d_%H%M)
 mkdir ${REPO}/runs/test/$date
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 
-
+# List of GPU queues
+# gpua100, gpuv100, gpua10, gpua40
 
 ### General options
 ### –- specify queue --
@@ -19,7 +20,7 @@
 ### -- set the email address --
 ### please uncomment the following line and put in your e-mail address,
 ### if you want to receive e-mail notifications on a non-default address
-###BSUB -u s210500@student.dtu.dk
+###BSUB -u s<number>@student.dtu.dk
 ### -- send notification at start --
 ###BSUB -B
 ### -- send notification at completion--
@@ -32,6 +33,11 @@
 
 # Load environmental variables
 source ./dev.env
+
+# Create job_out if it is not present
+if [[ ! -d ${REPO}/job_out ]]; then
+    mkdir ${REPO}/job_out
+fi
 
 date=$(date +%Y%m%d_%H%M)
 mkdir ${REPO}/runs/train/${date}
