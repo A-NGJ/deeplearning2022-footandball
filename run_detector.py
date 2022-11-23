@@ -19,7 +19,8 @@ from network import footandball
 import data.augmentation as augmentations
 from data.augmentation import PLAYER_LABEL, BALL_LABEL
 
-TEST_DIR = "runs/test"
+TEST_DIR = os.path.expandvars("${REPO}/runs/test")
+
 
 def draw_bboxes(image, detections):
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -116,6 +117,12 @@ def run_detector(model, args):
 
 if __name__ == "__main__":
     print("Run FootAndBall detector on input video")
+
+    if not "DATA_PATH" in os.environ:
+        raise EnvironmentError("missing DATA_PATH environmental variable")
+
+    if not "REPO" in os.environ:
+        raise EnvironmentError("missing REPO environmental variable")
 
     # Train the DeepBall ball detector model
     parser = argparse.ArgumentParser()

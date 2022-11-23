@@ -22,7 +22,7 @@ from misc import utils
 from network import footandball
 from network.ssd_loss import SSDLoss
 
-TRAIN_DIR = "runs/train"
+TRAIN_DIR = os.path.expandvars("${REPO}/runs/train")
 
 
 def train_model(model: footandball.FootAndBall, **kwargs):
@@ -194,6 +194,13 @@ def train(params: Params, run_dir: str):
 
 if __name__ == "__main__":
     print("Train FoootAndBall detector on ISSIA dataset")
+
+    if not "DATA_PATH" in os.environ:
+        raise EnvironmentError("missing DATA_PATH environmental variable")
+
+    if "REPO" not in os.environ:
+        raise EnvironmentError("missing REPO environmental variable")
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config",

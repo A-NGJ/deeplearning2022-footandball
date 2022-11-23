@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# List of GPU queues
-# gpua100, gpuv100, gpua10, gpua40
+
 
 ### General options
 ### –- specify queue --
@@ -48,7 +47,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 ## run training
-python3 train_detector.py --config config1.txt --run-dir ${REPO}/runs/train/${date}
+python3 train_detector.py --config config1.txt --run-dir ${date}
 
 if [[ $? -ne 0 ]]; then
     exit 1
