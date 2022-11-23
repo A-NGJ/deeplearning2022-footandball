@@ -19,6 +19,7 @@ from network import footandball
 import data.augmentation as augmentations
 from data.augmentation import PLAYER_LABEL, BALL_LABEL
 
+TEST_DIR = "runs/test"
 
 def draw_bboxes(image, detections):
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -63,8 +64,6 @@ def run_detector(model, args):
     model.print_summary(show_architecture=False)
     model = model.to(args.device)
 
-    # _, file_name = os.path.split(args.path)
-
     if args.device == "cpu":
         print("Loading CPU weights...")
         state_dict = torch.load(args.weights, map_location=lambda storage, loc: storage)
@@ -90,7 +89,7 @@ def run_detector(model, args):
         (frame_width, frame_height),
     )
 
-    print("Processing video: {}".format(args.path))
+    print(f"Processing video: {args.path}")
     pbar = tqdm.tqdm(total=n_frames)
     while sequence.isOpened():
         ret, frame = sequence.read()
@@ -147,18 +146,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--device", help="device (CPU or CUDA)", type=str, default="cuda:0"
     )
+    parser.add_argument(
+        "--run-dir",
+        help="[Optional] Directory for saving test data; default: YYMMDD_HHMM",
+        required=False,
+        default=utils.get_current_time(),
+    )
     args = parser.parse_args()
 
-    print("Video path: {}".format(args.path))
-    print("Model: {}".format(args.model))
-    print("Model weights path: {}".format(args.weights))
-    print("Ball confidence detection threshold [0..1]: {}".format(args.ball_threshold))
-    print(
-        "Player confidence detection threshold [0..1]: {}".format(args.player_threshold)
-    )
-    print("Output video path: {}".format(args.out_video))
-    print("Device: {}".format(args.device))
-
+    print(f"Video path: {args.path}")
+    print(f"Model: {args.model}")
+    print(f"Model weights path: {args.weights}")
+    print(f"Ball confidence detection threshold [0..1]: {args.ball_threshold}")
+    print(f"Player confidence detection threshold [0..1]: {args.player_threshold}")
+    print(f"Output video path: {args.out_video}")
+    print(f"Device: {args.device}")
     print("")
 
     assert os.path.exists(
@@ -174,12 +176,14 @@ if __name__ == "__main__":
     )
 
     # general run history directory
-    if not os.path.exists("runs/test"):
-        os.makedirs("runs/test")
+    if not os.path.exists(TEST_DIR):
+        os.makedirs(TEST_DIR)
 
     # run specific history directory
-    run_dir = f"runs/test/{utils.get_current_time()}"
-    # os.mkdir(run_dir)
+    run_dir = f"{TEST_DIR}/{args.run_dir}"
+    if not os.path.exists(run_dir):
+        os.mkdir(run_dir)
+
     with open(
         os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
     ) as wfile:

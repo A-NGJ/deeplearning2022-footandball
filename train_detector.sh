@@ -4,9 +4,9 @@
 ### –- specify queue --
 #BSUB -q gpua100
 ### -- set the job Name --
-#BSUB -J training
+#BSUB -J footandball_train
 ### -- ask for number of cores (default: 1) --
-#BSUB -n 1
+#BSUB -n 4
 ### -- Choose cpu model
 ###BSUB -R "select[model == XeonGold6226R]"
 ### -- Select the resources: 1 gpu in exclusive process mode --
@@ -50,5 +50,3 @@ python3 train_detector.py --config config1.txt
 if [[ $? -ne 0 ]]; then
     exit 1
 fi
-
-mv job_out/* ${REPO}/runs/train/${date}/

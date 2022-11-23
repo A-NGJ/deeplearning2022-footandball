@@ -23,7 +23,7 @@
 ### -- send notification at start --
 ###BSUB -B
 ### -- send notification at completion--
-###BSUB -N
+#BSUB -N
 ### -- Specify the output and error file. %J is the job-id --
 ### -- -o and -e mean append, -oo and -eo mean overwrite --
 #BSUB -o job_out/training%J.out
@@ -50,5 +50,3 @@ python3 run_detector.py --path ${DATA_PATH}/veo/veo1-short.mp4 --weights models/
 if [[ $? -ne 0 ]]; then
     exit 1
 fi
-
-mv job_out/* ${REPO}/runs/test/${date}/
