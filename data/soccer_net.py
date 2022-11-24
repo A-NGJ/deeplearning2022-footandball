@@ -95,7 +95,7 @@ class SoccerNet(torch.utils.data.Dataset):
         for _, (x1, y1, x2, y2) in enumerate(self.gt[idx]):
             bboxes.append((x1, y1, x2, y2))
             # if i == ball_idx:
-            labels.append(augmentation.BALL_LABEL)
+            labels.append(augmentation.PLAYER_LABEL)
             # else:
             #     labels.append(augmentation.PLAYER_LABEL)
 
