@@ -3,31 +3,97 @@
 
 1. Start by creating a virtual environment
 
-```bash
-python3 -m venv <path_to_virtual_environment>
-# for eample
-python3 -m venv ~/.venv/FootAndBall
-```
+    ```bash
+    python3 -m venv <path_to_virtual_environment>
+    # for eample
+    python3 -m venv ~/.venv/FootAndBall
+    ```
 
 2. Activate the environemnt
 
-```bash
-source ~/.venv/FootAndBall/bin/activate //Mac,Linux
-source ~/.venv/FootAndBall/Scripts/Activate.ps1 //Powershell
-```
+    ```bash
+    source ~/.venv/FootAndBall/bin/activate //Mac,Linux
+    source ~/.venv/FootAndBall/Scripts/Activate.ps1 //Powershell
+    ```
 
 3. Install dependencies
 
-```bash
-pip install -r requirements.txt
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-4. Run pre-commit
-```bash
-pre-commit run --all-files
-```
+4. Install pre-commit
+    ```bash
+    pre-commit install
+    ```
+
+5. Run pre-commit
+    ```bash
+    pre-commit run --all-files
+    ```
 
 5. You are ready to go!
+
+## HPC initalization
+
+1. Load python 3.10.7
+
+    ```bash
+    module load python3/3.10.7
+
+    python3 --version
+    $ Python 3.10.7
+    ```
+
+2. Create venv
+
+    Using build-in venv module
+    ```bash
+    python3 -m venv venv
+    ```
+    Or virtualenv tool
+    ```bash
+    virtualenv venv 
+    ```
+
+3. Activate venv
+
+    ```bash
+    source venv/bin/activate
+
+    python --version
+    $ Python 3.10.7
+    ```
+
+4. Install dependencies
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+5. Create `dev.env` file with environmental variables
+
+    Use `template.env` to begin.
+
+    `REPO` is an absolute path to your repository.
+
+    `DATA_PATH` is an absolute path to your directory with data.
+
+    > Hint: use `${HOME}` to quickly refer to your home directory.
+
+## Scheduling jobs on hpc
+
+1. Queue job
+
+    ```bash
+    bsub < {run,train}_detector.sh
+    ```
+2. Check the job status
+    ```bash
+    (watch) bstat
+    ```
+
+    Adding watch makes it a continuous output, use `Crl+C` to exit.
 
 ## Pylint and Black
 
