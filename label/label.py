@@ -10,6 +10,7 @@ from data.soccer_net import SoccerNet
 from image import image
 
 PACKAGE_PATH = "label"
+SOCCER_NET_PATH = os.path.expandvars("${DATA_PATH}/soccer_net/tracking/train/")
 
 
 def key_to_label(key: str):
@@ -32,23 +33,38 @@ def save(filename: str, df: pd.DataFrame):
         df.to_csv(wfile, index=False)
 
 
-def run():
-    SOCCER_NET_PATH = os.path.expandvars("${DATA_PATH}/soccer_net/tracking/train/")
-    filename = os.path.join(PACKAGE_PATH, "labels.csv")
-    columns = ["image", "bbox", "label"]
+def update_labels(filename: str):
+    ...
 
+
+def run():
+
+    columns = ["image", "bbox", "label"]
     sn = SoccerNet(SOCCER_NET_PATH)
     sn.collect()
 
-    if not os.path.exists(filename):
-        with open(filename, "w", encoding="utf-8") as wfile:
-            df = pd.DataFrame(columns=columns)
-            df.to_csv(wfile, index=False)
-
-    df = load(filename)
-    images = set(df["image"])
+    file_dir = ""
+    df = None
+    filename = ""
 
     for img_path, annot in zip(sn.image_list, sn.gt):
+
+        new_file_dir = img_path.split("/")[0]
+        if new_file_dir != file_dir:
+            if filename:
+                save(filename, df)
+
+            file_dir = new_file_dir
+
+            filename = os.path.join(PACKAGE_PATH, f"labels_{file_dir}.csv")
+            if not os.path.exists(filename):
+                with open(filename, "w", encoding="utf-8") as wfile:
+                    df = pd.DataFrame(columns=columns)
+                    df.to_csv(wfile, index=False)
+
+            df = load(filename)
+            images = set(df["image"])
+
         if img_path in images:
             continue
 
@@ -58,7 +74,8 @@ def run():
         for i, bbox in enumerate(annot):
             while True:
                 cv2.imshow(
-                    img_path, image.draw_bboxes(img, np.array([bbox]), image.Color.RED)
+                    img_path,
+                    image.draw_bboxes(img, np.array([bbox]), image.Color.BLUE, width=4),
                 )
                 key = cv2.waitKey(0)
                 if key == 27:  # esc
