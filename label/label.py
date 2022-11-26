@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 
 import cv2
@@ -21,20 +22,33 @@ def key_to_label(key: str):
     return -1
 
 
-def load(filename: str):
+def load(filename: str, header: int = 0):
     with open(filename, "r", encoding="utf-8") as rfile:
-        df = pd.read_csv(rfile)
+        df = pd.read_csv(rfile, header=header)
 
     return df
 
 
-def save(filename: str, df: pd.DataFrame):
+def save(filename: str, df: pd.DataFrame, header=True):
     with open(filename, "w", encoding="utf-8") as wfile:
-        df.to_csv(wfile, index=False)
+        df.to_csv(wfile, index=False, header=header)
 
 
 def update_labels(filename: str):
-    ...
+    data_dir = filename.split("_")[1]
+    det_dir = os.path.join(SOCCER_NET_PATH, data_dir, "det")
+    det_path = os.path.join(det_dir, "det.txt")
+    # Create a backup file
+    shutil.copy(det_path, os.path.join(det_dir, "det_back.txt"))
+
+    # load both files
+    det = load(det_path, header=None)
+    df = load(os.path.join(PACKAGE_PATH, f"{filename}.csv"))
+
+    # update labels
+    det["label"] = df["label"]
+
+    save(det_path, det, header=False)
 
 
 def run():
@@ -53,6 +67,7 @@ def run():
         if new_file_dir != file_dir:
             if filename:
                 save(filename, df)
+                update_labels(f"labels_{file_dir}")
 
             file_dir = new_file_dir
 
