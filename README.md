@@ -14,6 +14,7 @@
     ```bash
     source ~/.venv/FootAndBall/bin/activate //Mac,Linux
     source ~/.venv/FootAndBall/Scripts/Activate.ps1 //Powershell
+    conda activate FootAndBall //conda, miniconda
     ```
 
 3. Install dependencies
