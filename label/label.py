@@ -63,7 +63,7 @@ def run():
 
     columns = ["image", "bbox", "label"]
     sn = SoccerNet(SOCCER_NET_PATH)
-    sn.collect(["SNMOT-062"])
+    sn.collect(["SNMOT-170"])
 
     if len(sn.image_list) == 0:
         raise ValueError(
