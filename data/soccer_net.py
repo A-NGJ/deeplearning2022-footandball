@@ -53,10 +53,9 @@ class SoccerNet(torch.utils.data.Dataset):
 
         for subdir in Path(self.data_path).glob("SNMOT*"):
             if subdir.name in ids:
-                for file_ in os.listdir(path.join(self.data_path, subdir, "det")):
-                    annotation_files.append(
-                        path.join(self.data_path, subdir, "det", file_)
-                    )
+                annotation_files.append(
+                    path.join(self.data_path, subdir, "det", "det.txt")
+                )
 
         for annotated_file in annotation_files:
             sample = annotated_file.split(os.sep)[-3]
@@ -64,9 +63,22 @@ class SoccerNet(torch.utils.data.Dataset):
 
             with open(annotated_file, "r", encoding="utf-8") as rfile:
                 for row in csv.reader(rfile.readlines()):
-                    frame, _, x, y, w, h = [int(x) for x in row[:6]]
-                    image_annotations[imgpath.format(sample, frame)].append(
-                        [x, y, x + w, y + h]
+                    # frame, _, x, y, w, h = [int(x) for x in row[:6]]
+                    values = list(map(int, row))
+                    # values[0] - frame
+                    # values[2] - x
+                    # values[3] - y
+                    # values[4] - w
+                    # values[5] - h
+                    # values[-1] - label {ball,player,none}
+                    image_annotations[imgpath.format(sample, values[0])].append(
+                        [
+                            values[2],
+                            values[3],
+                            values[2] + values[4],
+                            values[3] + values[5],
+                            values[-1],
+                        ]
                     )
 
         for img, annot in image_annotations.items():
@@ -82,22 +94,18 @@ class SoccerNet(torch.utils.data.Dataset):
         bboxes = []
         labels = []
 
-        # min_ = np.inf
-        # ball_idx = 0
-        # # find the ball as a smallest bounding box
-        # for (x1, y1, x2, y2) in self.gt[idx]:
-        #     size = x2 - x1 + y2 - y1
-        #     if size < min_:
-        #         min_ = size
-        #         ball_idx = idx
-
         # Add annotations
-        for _, (x1, y1, x2, y2) in enumerate(self.gt[idx]):
+        for _, (x1, y1, x2, y2, label) in enumerate(self.gt[idx]):
             bboxes.append((x1, y1, x2, y2))
-            # if i == ball_idx:
-            labels.append(augmentation.PLAYER_LABEL)
-            # else:
-            #     labels.append(augmentation.PLAYER_LABEL)
+            if label > 0:
+                labels.append(label)
+            else:
+                size = abs(x2 - x1) * abs(y2 - y1)
+                # threshold = avg ball size + std deviation
+                if size < 1002:
+                    labels.append(augmentation.BALL_LABEL)
+                else:
+                    labels.append(augmentation.PLAYER_LABEL)
 
         return np.array(bboxes, dtype=float), np.array(labels, dtype=np.int64)
 
