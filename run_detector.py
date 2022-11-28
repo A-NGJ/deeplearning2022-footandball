@@ -18,8 +18,97 @@ from misc import utils
 from network import footandball
 import data.augmentation as augmentations
 from data.augmentation import PLAYER_LABEL, BALL_LABEL
+from data import soccer_net
+import numpy as np
+import json
+import pickle
 
 TEST_DIR = os.path.expandvars("${REPO}/runs/test")
+
+DATAPATH = r"C:\Users\psaff\Desktop\MasterAutonomousSystems\4semester\Deep Learning\project\datasets\SoccerNet\tracking\test\test"
+DATA_PATH = r"C:\Users\psaff\Desktop\MasterAutonomousSystems\4semester\Deep Learning\project\datasets"
+DATA = r"C:\Users\psaff\Desktop\MasterAutonomousSystems\4semester\Deep Learning\project\datasets\SoccerNet\tracking\test\test\SNMOT-116\img1"
+
+soccerNet = soccer_net.SoccerNet(DATAPATH)
+soccerNet.collect(["SNMOT-116"])
+print(soccerNet.gt[0])
+print("lenght: ", len(soccerNet.gt[0]))
+# gt = soccerNet.get_annotations(1)
+# print(gt)
+
+
+def getDet(data):
+    # print('Detections: ', data )
+    IMG_HEIGHT = 1920
+    IMG_WIDTH = 1080
+    gt = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=bool)
+    cntgt = 0
+
+    for i in range(0, len(data) - 1):
+        X1 = int(data[i][0])
+        Y1 = int(data[i][1])
+        X2 = int(data[i][2])
+        Y2 = int(data[i][3])
+        if X1 > IMG_HEIGHT:
+            X1 = IMG_HEIGHT
+        if X2 > IMG_HEIGHT:
+            X2 = IMG_HEIGHT
+        if Y1 > 1080:
+            Y1 = 1080
+        if Y2 > 1080:
+            Y2 = 1080  # for SMOT-162 test set, img=454 this condition makes sense
+        # print(X1, ' ', Y1, ' ', X2, ' ', Y2 )
+        cntgt += 1
+        # print('X: ', X, 'Y: ', Y, 'width: ',width, 'height: ', height)
+        for i in range(X1, X2 - 1):
+            for j in range(Y1, Y2 - 1):
+                # print(i, j)
+                gt[i][j] = 1
+    # gt - ground truth array, cntgt - number of objects
+    # print(type(gt))
+    # print(np.size(gt))
+    # print(gt.ndim)
+    # print(gt.shape)
+    return gt, cntgt
+
+
+def getGT(data):
+    # print('soccernet GT: ', data )
+    IMG_HEIGHT = 1920
+    IMG_WIDTH = 1080
+    gt = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype=bool)
+    cntgt = 0
+
+    for i in range(0, len(data) - 1):
+        X1 = int(data[i][0])
+        Y1 = int(data[i][1])
+        X2 = int(data[i][2])
+        Y2 = int(data[i][3])
+        # print(X1, ' ', Y1, ' ', X2, ' ', Y2 )
+        cntgt += 1
+        # print('X: ', X, 'Y: ', Y, 'width: ',width, 'height: ', height)
+        for i in range(X1, X2):
+            for j in range(Y1, Y2):
+                # print(i, j)
+                gt[i][j] = 1
+    # gt - ground truth array, cntgt - number of objects
+    # print(type(gt))
+    # print(np.size(gt))
+    # print(gt.ndim)
+    # print(gt.shape)
+    return gt, cntgt
+
+
+def IoU(result, gt):
+    # result, gt - np boolean arrays
+    overlap = result * gt  # Logical AND
+    union = result + gt  # Logical OR
+
+    IOU = overlap.sum() / float(union.sum())  # Treats "True" as 1,
+    # sums number of Trues
+    # in overlap and union
+    # and divides
+    return IOU
 
 
 def draw_bboxes(image, detections):
@@ -59,6 +148,80 @@ def draw_bboxes(image, detections):
             )
 
     return image
+
+
+def run_detector_soccerNet(model, args):
+    model.print_summary(show_architecture=False)
+    model = model.to(args.device)
+
+    if args.device == "cpu":
+        print("Loading CPU weights...")
+        state_dict = torch.load(args.weights, map_location=lambda storage, loc: storage)
+    else:
+        print("Loading GPU weights...")
+        state_dict = torch.load(args.weights)
+
+    model.load_state_dict(state_dict)
+    # Set model to evaluation mode
+    model.eval()
+
+    cap = cv2.VideoCapture(
+        r"C:\Users\psaff\Desktop\MasterAutonomousSystems\4semester\Deep Learning\project\datasets\SoccerNet\tracking\test\test\SNMOT-116\img1\%06d.jpg",
+        cv2.CAP_IMAGES,
+    )
+    fps = 30  # cap.get(cv2.CAP_PROP_FPS)
+
+    (frame_width, frame_height) = (
+        int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
+        int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+    )
+    print("width: ", frame_width, "height: ", frame_height)
+    n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    out_sequence = cv2.VideoWriter(
+        args.out_video,
+        cv2.VideoWriter_fourcc(*"mp4v"),
+        fps,
+        (frame_width, frame_height),
+    )
+    print(f"Processing video: {args.path}")
+    pbar = tqdm.tqdm(total=n_frames)
+
+    counter = -1
+    print("FRAMES to process: ", n_frames)
+    iou = np.zeros(n_frames)
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            # End of video
+            break
+        counter += 1
+        # Convert color space from BGR to RGB, convert to tensor and normalize
+        img_tensor = augmentations.numpy2tensor(frame)
+
+        with torch.no_grad():
+            # Add dimension for the batch size
+            img_tensor = img_tensor.unsqueeze(dim=0).to(args.device)
+            detections = model(img_tensor)[0]
+            gt, cntgt = getGT(soccerNet.gt[counter])
+            # detections = getGT(detections)
+
+            det = detections["boxes"]
+            det, cntdet = getDet(detections["boxes"])
+            # print("DETECTIONS: ", det)
+            # print('GT: ', gt)
+
+            iou[counter - 1] = IoU(gt, det)
+            # print('IOU: ', iou)
+
+        frame = draw_bboxes(frame, detections)
+        out_sequence.write(frame)
+        pbar.update(1)
+
+    pbar.close()
+    cap.release()
+    out_sequence.release()
+    metric = iou
+    return metric
 
 
 def run_detector(model, args):
@@ -118,11 +281,11 @@ def run_detector(model, args):
 if __name__ == "__main__":
     print("Run FootAndBall detector on input video")
 
-    if not "DATA_PATH" in os.environ:
-        raise EnvironmentError("missing DATA_PATH environmental variable")
+    # if not "DATA_PATH" in os.environ:
+    #    raise EnvironmentError("missing DATA_PATH environmental variable")
 
-    if not "REPO" in os.environ:
-        raise EnvironmentError("missing REPO environmental variable")
+    # if not "REPO" in os.environ:
+    #    raise EnvironmentError("missing REPO environmental variable")
 
     # Train the DeepBall ball detector model
     parser = argparse.ArgumentParser()
@@ -191,10 +354,12 @@ if __name__ == "__main__":
     if not os.path.exists(run_dir):
         os.mkdir(run_dir)
 
-    with open(
-        os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
-    ) as wfile:
-        json.dump(args.__dict__, wfile, indent=2)
-
     args.out_video = os.path.join(run_dir, args.out_video)
-    run_detector(model, args)
+    metric = run_detector_soccerNet(model, args)
+
+    pickle.dump(metric, open("metricOLO.p", "wb"))
+
+    with open("metricOLO.json", "w") as outfile:
+        json.dump(metric, outfile)
+
+    print("metrics saved!")

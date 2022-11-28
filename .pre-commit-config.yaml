@@ -9,14 +9,14 @@ repos:
     rev: 22.10.0
     hooks:
       - id: black
-  - repo: local
-    hooks:
-      - id: pylint
-        name: pylint
-        entry: pylint
-        language: system
-        types: [python]
-        require_serial: true
-        args:
-          - "--rcfile=pylintrc"
-          - "-rn"
+  #- repo: local
+  #  hooks:
+  #    - id: pylint
+  #      name: pylint
+  #      entry: pylint
+  #      language: system
+  #      types: [python]
+  #      require_serial: true
+  #      args:
+  #        - "--rcfile=pylintrc"
+  #        - "-rn"
