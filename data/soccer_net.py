@@ -15,6 +15,7 @@ class SoccerNet(torch.utils.data.Dataset):
     def __init__(self, data_path: str, transform=None):
         self.image_list = []
         self.gt = []
+        self.labels = []
         self.data_path = data_path
         self.transform = transform
 
@@ -50,6 +51,7 @@ class SoccerNet(torch.utils.data.Dataset):
 
         annotation_files = []
         image_annotations = defaultdict(list)
+        labels = defaultdict(list)
 
         for subdir in Path(self.data_path).glob("SNMOT*"):
             if subdir.name in ids:
@@ -77,13 +79,14 @@ class SoccerNet(torch.utils.data.Dataset):
                             values[3],
                             values[2] + values[4],
                             values[3] + values[5],
-                            values[-1],
                         ]
                     )
+                    labels[imgpath.format(sample, values[0])].append(values[-1])
 
         for img, annot in image_annotations.items():
             self.gt.append(np.array(annot))
             self.image_list.append(img)
+            self.labels.append(labels[img])
 
     def get_annotations(self, idx: int):
         """
@@ -95,19 +98,24 @@ class SoccerNet(torch.utils.data.Dataset):
         labels = []
 
         # Add annotations
-        for _, (x1, y1, x2, y2, label) in enumerate(self.gt[idx]):
+        for i, (x1, y1, x2, y2) in enumerate(self.gt[idx]):
             bboxes.append((x1, y1, x2, y2))
-            if label > 0:
-                labels.append(label)
+            if self.labels[idx][i] > 0:
+                labels.append(self.labels[idx][i])
             else:
                 size = abs(x2 - x1) * abs(y2 - y1)
                 # threshold = avg ball size + std deviation
-                if size < 1002:
+                if size < 400:
                     labels.append(augmentation.BALL_LABEL)
                 else:
                     labels.append(augmentation.PLAYER_LABEL)
 
         return np.array(bboxes, dtype=float), np.array(labels, dtype=np.int64)
+
+    def clean(self):
+        self.image_list = []
+        self.gt = []
+        self.labels = []
 
 
 def create_soccer_net_dataset(
