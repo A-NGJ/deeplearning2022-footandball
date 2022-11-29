@@ -43,7 +43,6 @@ def run_detector(model, args) -> t.Optional[np.array]:
 
     soccer_net_ = None
     start_frame = int(Path(args.path).name.split(".")[0])
-    print("start frame", start_frame)
 
     if args.metric_path:
         metric_path = Path(args.metric_path)
@@ -91,7 +90,6 @@ def run_detector(model, args) -> t.Optional[np.array]:
     print(f"Processing video: {args.path}")
     pbar = tqdm.tqdm(total=n_frames)
 
-    # iou = np.zeros(n_frames)
     iou = []
     while sequence.isOpened():
 
