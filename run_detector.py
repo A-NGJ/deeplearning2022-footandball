@@ -6,9 +6,13 @@
 # Emilia Konopko, Barbara Pierkarska, Aleksander Nagaj, Piotr Saffarini
 # As a part of 02456 Deep Learning at DTU
 
+import logging
+
 import os
 from pathlib import Path
 from pprint import pprint
+import sys
+import typing as t
 import argparse
 import json
 
@@ -24,15 +28,28 @@ from data import soccer_net, augmentation
 
 TEST_DIR = os.path.expandvars("${REPO}/runs/test")
 
+logging.basicConfig(format="%(levelname)s: %(message)s")
 
 # pylint: disable=too-many-locals
-def run_detector(model, args):
+def run_detector(model, args) -> t.Optional[np.array]:
+    """
+    Runs FootAndBall detector.
+
+    Returns
+    -------
+    Optional[np.array] :
+        Intersection of union metric, if specified in args
+    """
 
     soccer_net_ = None
     if args.metric_path:
         metric_path = Path(args.metric_path)
         soccer_net_ = soccer_net.SoccerNet(metric_path.parents[0])
         soccer_net_.collect([metric_path.name])
+        if len(soccer_net_.gt) == 0:
+            raise EnvironmentError(
+                f"missing ground truth labels in {metric_path.name} directory"
+            )
 
     model.print_summary(show_architecture=False)
     model = model.to(args.device)
@@ -106,13 +123,14 @@ def run_detector(model, args):
     return iou
 
 
-if __name__ == "__main__":
-
+def main():
     if not "DATA_PATH" in os.environ:
-        raise EnvironmentError("missing DATA_PATH environmental variable")
+        logging.error("missing DATA_PATH environmental variable")
+        return 1
 
     if not "REPO" in os.environ:
-        raise EnvironmentError("missing REPO environmental variable")
+        logging.error("missing REPO environmental variable")
+        return 1
 
     # Train the DeepBall ball detector model
     parser = argparse.ArgumentParser(
@@ -168,10 +186,14 @@ if __name__ == "__main__":
     print("=" * 71)
     print()
 
-    assert os.path.exists(
-        args.weights
-    ), f"Cannot find FootAndBall model weights: {args.weights}"
-    assert os.path.exists(args.path), f"Cannot open video: {args.path}"
+    try:
+        assert os.path.exists(
+            args.weights,
+        ), f"Cannot find FootAndBall model weights: {args.weights}"
+        assert os.path.exists(args.path), f"Cannot open video: {args.patkh}"
+    except AssertionError as err:
+        logging.error(err)
+        return 1
 
     model = footandball.model_factory(
         args.model,
@@ -189,14 +211,33 @@ if __name__ == "__main__":
     if not os.path.exists(run_dir):
         os.mkdir(run_dir)
 
-    with open(
-        os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
-    ) as wfile:
-        json.dump(args.__dict__, wfile, indent=2)
+    try:
+        with open(
+            os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
+        ) as wfile:
+            json.dump(args.__dict__, wfile, indent=2)
+    except EnvironmentError as err:
+        logging.error(err)
+        return 1
 
     args.out_video = os.path.join(run_dir, args.out_video)
     # RUN DETECTOR
-    metric = run_detector(model, args)
+    try:
+        metric = run_detector(model, args)
+    # pylint: disable=broad-except
+    except Exception as err:
+        logging.error(err)
+        return 1
 
-    with open(os.path.join(run_dir, "iou.json"), "w", encoding="utf-8") as outfile:
-        json.dump(metric.tolist(), outfile, indent=2)
+    try:
+        with open(os.path.join(run_dir, "iou.json"), "w", encoding="utf-8") as outfile:
+            json.dump(metric.tolist(), outfile, indent=2)
+    except EnvironmentError as err:
+        logging.error(err)
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
