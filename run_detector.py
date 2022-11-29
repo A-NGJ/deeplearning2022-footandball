@@ -42,7 +42,10 @@ def run_detector(model, args) -> t.Optional[np.array]:
     """
 
     soccer_net_ = None
+    start_frame = 0
+
     if args.metric_path:
+        start_frame = int(Path(args.path).name.split(".")[0])
         metric_path = Path(args.metric_path)
         soccer_net_ = soccer_net.SoccerNet(metric_path.parents[0])
         soccer_net_.collect([metric_path.name])
@@ -66,8 +69,10 @@ def run_detector(model, args) -> t.Optional[np.array]:
     model.eval()
 
     sequence = cv2.VideoCapture(args.path)
+    fps = sequence.get(cv2.CAP_PROP_FPS)
     if args.metric_path:
         sequence = cv2.VideoCapture(args.path, cv2.CAP_IMAGES)
+        fps = 30
 
     (frame_width, frame_height) = (
         int(sequence.get(cv2.CAP_PROP_FRAME_WIDTH)),
@@ -75,10 +80,6 @@ def run_detector(model, args) -> t.Optional[np.array]:
     )
     print("width: ", frame_width, "height: ", frame_height)
     n_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
-
-    fps = sequence.get(cv2.CAP_PROP_FPS)
-    if args.metric_path:
-        fps = 30
 
     out_sequence = cv2.VideoWriter(
         args.out_video,
@@ -90,14 +91,13 @@ def run_detector(model, args) -> t.Optional[np.array]:
     print(f"Processing video: {args.path}")
     pbar = tqdm.tqdm(total=n_frames)
 
-    counter = -1
-    iou = np.zeros(n_frames)
+    iou = []
     while sequence.isOpened():
+
         ret, frame = sequence.read()
         if not ret:
             # End of video
             break
-        counter += 1
         # Convert color space from BGR to RGB, convert to tensor and normalize
         img_tensor = augmentation.numpy2tensor(frame)
 
@@ -107,14 +107,26 @@ def run_detector(model, args) -> t.Optional[np.array]:
             detections = model(img_tensor)[0]
 
             if args.metric_path:
-                gt, _ = metric.getGT(soccer_net_.gt[counter])
+                gt, _ = metric.getGT(soccer_net_.gt[start_frame - 1])
 
                 det, _ = metric.getGT(detections["boxes"])
-                iou[counter - 1] = metric.IoU(gt, det)
+                iou.append(metric.IoU(gt, det))
+
+        # Display overlap of detection and gt for debug purposes
+        if args.debug:
+            frameGT = image.draw_bboxes(
+                frame, soccer_net_.gt[start_frame - 1], image.Color.GREEN
+            )
+            frameGT = image.draw_bboxes(frameGT, detections["boxes"], image.Color.RED)
+            cv2.imshow("img", frameGT)
+            if cv2.waitKey(0) == 27:
+                args.debug = False
+            cv2.destroyAllWindows()
 
         frame = image.draw_bboxes_on_detections(frame, detections)
         out_sequence.write(frame)
         pbar.update(1)
+        start_frame += 1
 
     pbar.close()
     sequence.release()
@@ -177,6 +189,11 @@ def main():
         "--metric-path",
         help="Ground truth dir. If used metrics are calculated among detection",
     )
+    parser.add_argument(
+        "--debug",
+        help="Debug mode. Displays overlap of detection and ground truth during detection",
+        action="store_true",
+    )
 
     args = parser.parse_args()
 
@@ -229,12 +246,23 @@ def main():
         logging.error(err)
         return 1
 
-    try:
-        with open(os.path.join(run_dir, "iou.json"), "w", encoding="utf-8") as outfile:
-            json.dump(metric.tolist(), outfile, indent=2)
-    except EnvironmentError as err:
-        logging.error(err)
-        return 1
+    if len(metric) > 0:
+        try:
+            with open(
+                os.path.join(run_dir, "iou.json"), "w", encoding="utf-8"
+            ) as outfile:
+                json.dump(
+                    {
+                        "raw": metric,
+                        "avg": np.mean(metric),
+                        "std": np.std(metric),
+                    },
+                    outfile,
+                    indent=2,
+                )
+        except EnvironmentError as err:
+            logging.error(err)
+            return 1
 
     return 0
 

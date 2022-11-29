@@ -2,7 +2,7 @@ import typing as t
 import numpy as np
 
 
-def getGT(data, img_height=1920, img_width=1080) -> t.Tuple[np.array, int]:
+def getGT(data, img_height=1080, img_width=1920) -> t.Tuple[np.array, int]:
     """
     Returns
     -------
@@ -11,14 +11,14 @@ def getGT(data, img_height=1920, img_width=1080) -> t.Tuple[np.array, int]:
     cntgt :
         number of objects
     """
-    gt = np.zeros((img_height, img_width), dtype=bool)
+    gt = np.zeros((img_width, img_height), dtype=bool)
     cntgt = 0
 
-    for i in range(0, len(data) - 1):
-        X1 = min(int(data[i][0]), img_height)
-        Y1 = min(int(data[i][1]), img_width)
-        X2 = min(int(data[i][2]), img_height)
-        Y2 = min(int(data[i][3]), img_width)
+    for _, row in enumerate(data):
+        X1 = min(int(row[0]), img_width)
+        Y1 = min(int(row[1]), img_height)
+        X2 = min(int(row[2]), img_width)
+        Y2 = min(int(row[3]), img_height)
 
         cntgt += 1
 

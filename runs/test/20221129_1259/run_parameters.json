@@ -1,0 +1,11 @@
+{
+  "path": "/Users/aleksandernagaj/DTU/02456/data/veo/test_video/test_2.mp4",
+  "model": "fb1",
+  "weights": "runs/train/20221128_0203/model.pth",
+  "ball_threshold": 0.7,
+  "player_threshold": 0.99,
+  "out_video": "out.mp4",
+  "device": "cpu",
+  "run_dir": "20221129_1259",
+  "metric_path": null
+}
