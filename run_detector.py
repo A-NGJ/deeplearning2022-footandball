@@ -2,71 +2,54 @@
 # Jacek Komorowski, Grzegorz Kurzejamski, Grzegorz Sarwas
 # Copyright (c) 2020 Sport Algorithmics and Gaming
 
-#
-# Run FootAndBall detector on ISSIA-CNR Soccer videos
-#
+# Detector developed further on Soccer Net tracking dataset
+# Emilia Konopko, Barbara Pierkarska, Aleksander Nagaj, Piotr Saffarini
+# As a part of 02456 Deep Learning at DTU
+
+import logging
 
 import os
+from pathlib import Path
+from pprint import pprint
+import sys
+import typing as t
 import argparse
 import json
 
+import numpy as np
 import torch
 import cv2
 import tqdm
 
-from image import metric
+from image import metric, image
 from misc import utils
 from network import footandball
-import data.augmentation as augmentations
-from data.augmentation import PLAYER_LABEL, BALL_LABEL
-from data import soccer_net
-import numpy as np
+from data import soccer_net, augmentation
 
 TEST_DIR = os.path.expandvars("${REPO}/runs/test")
 
+logging.basicConfig(format="%(levelname)s: %(message)s")
 
-def draw_bboxes(image, detections):
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    for box, label, score in zip(
-        detections["boxes"], detections["labels"], detections["scores"]
-    ):
-        if label == PLAYER_LABEL:
-            x1, y1, x2, y2 = box
-            color = (255, 0, 0)
-            cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
-            cv2.putText(
-                image,
-                "{:0.2f}".format(score),
-                (int(x1), max(0, int(y1) - 10)),
-                font,
-                1,
-                color,
-                2,
+# pylint: disable=too-many-locals
+def run_detector(model, args) -> t.Optional[np.array]:
+    """
+    Runs FootAndBall detector.
+
+    Returns
+    -------
+    Optional[np.array] :
+        Intersection of union metric, if specified in args
+    """
+
+    soccer_net_ = None
+    if args.metric_path:
+        metric_path = Path(args.metric_path)
+        soccer_net_ = soccer_net.SoccerNet(metric_path.parents[0])
+        soccer_net_.collect([metric_path.name])
+        if len(soccer_net_.gt) == 0:
+            raise EnvironmentError(
+                f"missing ground truth labels in {metric_path.name} directory"
             )
-
-        elif label == BALL_LABEL:
-            x1, y1, x2, y2 = box
-            x = int((x1 + x2) / 2)
-            y = int((y1 + y2) / 2)
-            color = (0, 0, 255)
-            radius = 25
-            cv2.circle(image, (int(x), int(y)), radius, color, 2)
-            cv2.putText(
-                image,
-                "{:0.2f}".format(score),
-                (max(0, int(x - radius)), max(0, (y - radius - 10))),
-                font,
-                1,
-                color,
-                2,
-            )
-
-    return image
-
-
-def run_detector(model, args):
-    soccerNet = soccer_net.SoccerNet(args.path)
-    soccerNet.collect([args.gt_dir])
 
     model.print_summary(show_architecture=False)
     model = model.to(args.device)
@@ -82,7 +65,9 @@ def run_detector(model, args):
     # Set model to evaluation mode
     model.eval()
 
-    sequence = cv2.VideoCapture(args.path, cv2.CAP_IMAGES)
+    sequence = cv2.VideoCapture(args.path)
+    if args.metric_path:
+        sequence = cv2.VideoCapture(args.path, cv2.CAP_IMAGES)
 
     (frame_width, frame_height) = (
         int(sequence.get(cv2.CAP_PROP_FRAME_WIDTH)),
@@ -92,8 +77,8 @@ def run_detector(model, args):
     n_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
 
     fps = sequence.get(cv2.CAP_PROP_FPS)
-    if args.metric:
-        fps = 30  # cap.get(cv2.CAP_PROP_FPS)
+    if args.metric_path:
+        fps = 30
 
     out_sequence = cv2.VideoWriter(
         args.out_video,
@@ -114,21 +99,20 @@ def run_detector(model, args):
             break
         counter += 1
         # Convert color space from BGR to RGB, convert to tensor and normalize
-        img_tensor = augmentations.numpy2tensor(frame)
+        img_tensor = augmentation.numpy2tensor(frame)
 
         with torch.no_grad():
             # Add dimension for the batch size
             img_tensor = img_tensor.unsqueeze(dim=0).to(args.device)
             detections = model(img_tensor)[0]
 
-            if args.metric:
-                gt, _ = metric.getGT(soccerNet.gt[counter])
+            if args.metric_path:
+                gt, _ = metric.getGT(soccer_net_.gt[counter])
 
-                det = detections["boxes"]
                 det, _ = metric.getGT(detections["boxes"])
                 iou[counter - 1] = metric.IoU(gt, det)
 
-        frame = draw_bboxes(frame, detections)
+        frame = image.draw_bboxes_on_detections(frame, detections)
         out_sequence.write(frame)
         pbar.update(1)
 
@@ -139,97 +123,48 @@ def run_detector(model, args):
     return iou
 
 
-# def run_detector(model, args):
-#     model.print_summary(show_architecture=False)
-#     model = model.to(args.device)
-
-#     if args.device == "cpu":
-#         print("Loading CPU weights...")
-#         state_dict = torch.load(args.weights, map_location=lambda storage, loc: storage)
-#     else:
-#         print("Loading GPU weights...")
-#         state_dict = torch.load(args.weights)
-
-#     model.load_state_dict(state_dict)
-#     # Set model to evaluation mode
-#     model.eval()
-
-#     sequence = cv2.VideoCapture(args.path)
-#     fps = sequence.get(cv2.CAP_PROP_FPS)
-#     (frame_width, frame_height) = (
-#         int(sequence.get(cv2.CAP_PROP_FRAME_WIDTH)),
-#         int(sequence.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-#     )
-#     n_frames = int(sequence.get(cv2.CAP_PROP_FRAME_COUNT))
-#     out_sequence = cv2.VideoWriter(
-#         args.out_video,
-#         cv2.VideoWriter_fourcc(*"XVID"),
-#         fps,
-#         (frame_width, frame_height),
-#     )
-
-#     print(f"Processing video: {args.path}")
-#     pbar = tqdm.tqdm(total=n_frames)
-#     while sequence.isOpened():
-#         ret, frame = sequence.read()
-#         if not ret:
-#             # End of video
-#             break
-
-#         # Convert color space from BGR to RGB, convert to tensor and normalize
-#         img_tensor = augmentations.numpy2tensor(frame)
-
-#         with torch.no_grad():
-#             # Add dimension for the batch size
-#             img_tensor = img_tensor.unsqueeze(dim=0).to(args.device)
-#             detections = model(img_tensor)[0]
-
-#         frame = draw_bboxes(frame, detections)
-#         out_sequence.write(frame)
-#         pbar.update(1)
-
-#     pbar.close()
-#     sequence.release()
-#     out_sequence.release()
-
-
-if __name__ == "__main__":
-    print("Run FootAndBall detector on input video")
-
+def main():
     if not "DATA_PATH" in os.environ:
-        raise EnvironmentError("missing DATA_PATH environmental variable")
+        logging.error("missing DATA_PATH environmental variable")
+        return 1
 
     if not "REPO" in os.environ:
-        raise EnvironmentError("missing REPO environmental variable")
+        logging.error("missing REPO environmental variable")
+        return 1
 
     # Train the DeepBall ball detector model
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--path", help="path to video", type=str, required=True)
+    parser = argparse.ArgumentParser(
+        description="Run FootAndBall detector on input video"
+    )
+    parser.add_argument(
+        "--path", help="path to video/images used for detction", type=str, required=True
+    )
     parser.add_argument("--model", help="model name", type=str, default="fb1")
     parser.add_argument(
         "--weights", help="path to model weights", type=str, required=True
     )
     parser.add_argument(
-        "--ball_threshold",
+        "--ball-threshold",
         help="ball confidence detection threshold",
         type=float,
         default=0.7,
     )
     parser.add_argument(
-        "--player_threshold",
+        "--player-threshold",
         help="player confidence detection threshold",
         type=float,
         default=0.7,
     )
     parser.add_argument(
-        "--out_video",
+        "-o",
+        "--out-video",
         help="path to video with detection results",
         type=str,
         required=True,
         default=None,
     )
     parser.add_argument(
-        "--device", help="device (CPU or CUDA)", type=str, default="cuda:0"
+        "-d", "--device", help="device (CPU or CUDA)", type=str, default="cuda:0"
     )
     parser.add_argument(
         "--run-dir",
@@ -237,31 +172,28 @@ if __name__ == "__main__":
         required=False,
         default=utils.get_current_time(),
     )
-    parser.add_argument("--gt-dir", help="Ground truth dir (if applicable)")
     parser.add_argument(
-        "--metric",
-        help=(
-            "Run detector in metric mode. It most likely means that images are provided"
-            "instead of a video; default False"
-        ),
-        action="store_true",
-        required=False,
+        "-m",
+        "--metric-path",
+        help="Ground truth dir. If used metrics are calculated among detection",
     )
+
     args = parser.parse_args()
 
-    print(f"Video path: {args.path}")
-    print(f"Model: {args.model}")
-    print(f"Model weights path: {args.weights}")
-    print(f"Ball confidence detection threshold [0..1]: {args.ball_threshold}")
-    print(f"Player confidence detection threshold [0..1]: {args.player_threshold}")
-    print(f"Output video path: {args.out_video}")
-    print(f"Device: {args.device}")
-    print("")
+    print()
+    print("=" * 20 + " Running FootAndBall detection " + "=" * 20)
+    pprint(args.__dict__)
+    print("=" * 71)
+    print()
 
-    assert os.path.exists(
-        args.weights
-    ), f"Cannot find FootAndBall model weights: {args.weights}"
-    assert os.path.exists(args.path), f"Cannot open video: {args.path}"
+    try:
+        assert os.path.exists(
+            args.weights,
+        ), f"Cannot find FootAndBall model weights: {args.weights}"
+        assert os.path.exists(args.path), f"Cannot open video: {args.patkh}"
+    except AssertionError as err:
+        logging.error(err)
+        return 1
 
     model = footandball.model_factory(
         args.model,
@@ -279,13 +211,33 @@ if __name__ == "__main__":
     if not os.path.exists(run_dir):
         os.mkdir(run_dir)
 
-    with open(
-        os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
-    ) as wfile:
-        json.dump(args.__dict__, wfile, indent=2)
+    try:
+        with open(
+            os.path.join(run_dir, "run_parameters.json"), "w", encoding="utf-8"
+        ) as wfile:
+            json.dump(args.__dict__, wfile, indent=2)
+    except EnvironmentError as err:
+        logging.error(err)
+        return 1
 
     args.out_video = os.path.join(run_dir, args.out_video)
-    metric = run_detector(model, args)
+    # RUN DETECTOR
+    try:
+        metric = run_detector(model, args)
+    # pylint: disable=broad-except
+    except Exception as err:
+        logging.error(err)
+        return 1
 
-    with open(os.path.join(run_dir, "metric.json"), "w", encoding="utf-8") as outfile:
-        json.dump(metric.tolist(), outfile, indent=2)
+    try:
+        with open(os.path.join(run_dir, "iou.json"), "w", encoding="utf-8") as outfile:
+            json.dump(metric.tolist(), outfile, indent=2)
+    except EnvironmentError as err:
+        logging.error(err)
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
