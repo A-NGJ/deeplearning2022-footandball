@@ -42,9 +42,10 @@ def run_detector(model, args) -> t.Optional[np.array]:
     """
 
     soccer_net_ = None
-    start_frame = int(Path(args.path).name.split(".")[0])
+    start_frame = 0
 
     if args.metric_path:
+        start_frame = int(Path(args.path).name.split(".")[0])
         metric_path = Path(args.metric_path)
         soccer_net_ = soccer_net.SoccerNet(metric_path.parents[0])
         soccer_net_.collect([metric_path.name])
@@ -245,20 +246,23 @@ def main():
         logging.error(err)
         return 1
 
-    try:
-        with open(os.path.join(run_dir, "iou.json"), "w", encoding="utf-8") as outfile:
-            json.dump(
-                {
-                    "raw": metric,
-                    "avg": np.mean(metric),
-                    "std": np.std(metric),
-                },
-                outfile,
-                indent=2,
-            )
-    except EnvironmentError as err:
-        logging.error(err)
-        return 1
+    if len(metric) > 0:
+        try:
+            with open(
+                os.path.join(run_dir, "iou.json"), "w", encoding="utf-8"
+            ) as outfile:
+                json.dump(
+                    {
+                        "raw": metric,
+                        "avg": np.mean(metric),
+                        "std": np.std(metric),
+                    },
+                    outfile,
+                    indent=2,
+                )
+        except EnvironmentError as err:
+            logging.error(err)
+            return 1
 
     return 0
 
