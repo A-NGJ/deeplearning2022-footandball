@@ -171,3 +171,7 @@ dev*
 
 # Mac OS
 .DS_Store
+
+# videos
+*.mp4
+*.avi
