@@ -1,0 +1,15 @@
+[DEFAULT]
+
+issia_path=$DATA_PATH/issia
+issia_train_cameras=1
+issia_val_cameras=5
+
+soccer_net_path=$DATA_PATH/soccer_net/tracking/train
+soccer_net_set=SNMOT-161
+
+epochs=20
+lr=0.005
+batch_size=4
+num_workers=8
+
+model=fb1
