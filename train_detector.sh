@@ -15,7 +15,7 @@
 ### -- set walltime limit: hh:mm --  maximum 24 hours for GPU-queues right now
 #BSUB -W 24:00
 ### request RAM system-memory
-#BSUB -R "rusage[mem=32GB]"
+#BSUB -R "rusage[mem=16GB]"
 #BSUB -R "span[hosts=1]"
 ### -- set the email address --
 ### please uncomment the following line and put in your e-mail address,
@@ -51,7 +51,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 ## run training
-python3 train_detector.py --config config.txt --run-dir ${date}
+python3 train_detector.py --config config/config01.txt --run-dir ${date}_01
 
 if [[ $? -ne 0 ]]; then
     exit 1
