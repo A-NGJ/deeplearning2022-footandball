@@ -1,4 +1,6 @@
+import sys
 import typing as t
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -12,7 +14,6 @@ def getGT(data, img_height=1080, img_width=1920) -> t.Tuple[np.array, int]:
         number of objects
     """
     gt = np.zeros((img_width, img_height), dtype=bool)
-    cntgt = 0
 
     for _, row in enumerate(data):
         X1 = min(int(row[0]), img_width)
@@ -20,13 +21,11 @@ def getGT(data, img_height=1080, img_width=1920) -> t.Tuple[np.array, int]:
         X2 = min(int(row[2]), img_width)
         Y2 = min(int(row[3]), img_height)
 
-        cntgt += 1
-
         for i in range(X1, X2 - 1):
             for j in range(Y1, Y2 - 1):
                 gt[i][j] = 1
 
-    return gt, cntgt
+    return gt, len(data)
 
 
 def IoU(result, gt):
@@ -39,3 +38,7 @@ def IoU(result, gt):
     # in overlap and union
     # and divides
     return IOU
+
+
+if __name__ == "__main__":
+    ...
