@@ -51,7 +51,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 ## run training
-python3 train_detector.py --config config/config01.txt --run-dir ${date}
+python3 train_detector.py --config configs/config01.txt --run-dir ${date}
 
 if [[ $? -ne 0 ]]; then
     exit 1

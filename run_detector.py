@@ -207,7 +207,7 @@ def main():
         assert os.path.exists(
             args.weights,
         ), f"Cannot find FootAndBall model weights: {args.weights}"
-        assert os.path.exists(args.path), f"Cannot open video: {args.patkh}"
+        assert os.path.exists(args.path), f"Cannot open video: {args.path}"
     except AssertionError as err:
         logging.error(err)
         return 1
