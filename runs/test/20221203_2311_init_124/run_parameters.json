@@ -1,0 +1,12 @@
+{
+  "path": "/Users/aleksandernagaj/DTU/02456/data/soccer_net/tracking/test/SNMOT-124/img1/000001.jpg",
+  "model": "fb1",
+  "weights": "/Users/aleksandernagaj/DTU/02456/deeplearning2022-footandball/runs/train/20221128_0203/model.pth",
+  "ball_threshold": 0.7,
+  "player_threshold": 0.9,
+  "out_video": "out.mp4",
+  "device": "cpu",
+  "run_dir": "20221203_2311_init_124",
+  "metric_path": "/Users/aleksandernagaj/DTU/02456/data/soccer_net/tracking/test/SNMOT-124",
+  "debug": false
+}

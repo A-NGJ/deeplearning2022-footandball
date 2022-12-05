@@ -10,7 +10,7 @@ spd_set=1,2
 soccer_net_path=$DATA_PATH/soccer_net/tracking/train
 
 epochs=20
-lr=1e-3
+lr=0.0001
 batch_size=12
 num_workers=8
 

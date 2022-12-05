@@ -1,0 +1,12 @@
+{
+  "path": "/work3/s210500/datasets/veo/veo1-short.mp4",
+  "model": "fb1",
+  "weights": "models/model_20201019_1416_final.pth",
+  "ball_threshold": 0.7,
+  "player_threshold": 0.7,
+  "out_video": "out_video.avi",
+  "device": "cuda",
+  "run_dir": "20221129_2209_1",
+  "metric_path": null,
+  "debug": false
+}

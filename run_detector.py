@@ -16,6 +16,7 @@ import typing as t
 import argparse
 import json
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import cv2
@@ -91,7 +92,10 @@ def run_detector(model, args) -> t.Optional[np.array]:
     print(f"Processing video: {args.path}")
     pbar = tqdm.tqdm(total=n_frames)
 
+    # Intersection over Union
     iou = []
+    # Ratio of number of detected players to number of ground truth labels
+    detected = []
     while sequence.isOpened():
 
         ret, frame = sequence.read()
@@ -107,10 +111,15 @@ def run_detector(model, args) -> t.Optional[np.array]:
             detections = model(img_tensor)[0]
 
             if args.metric_path:
-                gt, _ = metric.getGT(soccer_net_.gt[start_frame - 1])
+                gt, gt_detected = metric.getGT(soccer_net_.gt[start_frame - 1])
 
-                det, _ = metric.getGT(detections["boxes"])
-                iou.append(metric.IoU(gt, det))
+                det, det_detected = metric.getGT(detections["boxes"])
+
+                if gt_detected == 0:
+                    detected.append(1)
+                else:
+                    detected.append(det_detected / gt_detected)
+                iou.append(metric.IoU(det, gt))
 
         # Display overlap of detection and gt for debug purposes
         if args.debug:
@@ -132,7 +141,7 @@ def run_detector(model, args) -> t.Optional[np.array]:
     sequence.release()
     out_sequence.release()
 
-    return iou
+    return iou, detected
 
 
 def main():
@@ -207,7 +216,7 @@ def main():
         assert os.path.exists(
             args.weights,
         ), f"Cannot find FootAndBall model weights: {args.weights}"
-        assert os.path.exists(args.path), f"Cannot open video: {args.patkh}"
+        assert os.path.exists(args.path), f"Cannot open video: {args.path}"
     except AssertionError as err:
         logging.error(err)
         return 1
@@ -240,7 +249,7 @@ def main():
     args.out_video = os.path.join(run_dir, args.out_video)
     # RUN DETECTOR
     try:
-        metric = run_detector(model, args)
+        metric, detected = run_detector(model, args)
     # pylint: disable=broad-except
     except Exception as err:
         logging.error(err)
@@ -256,6 +265,7 @@ def main():
                         "raw": metric,
                         "avg": np.mean(metric),
                         "std": np.std(metric),
+                        "detected_ratio": np.mean(detected),
                     },
                     outfile,
                     indent=2,
