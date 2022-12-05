@@ -50,7 +50,8 @@ if [[ $? -ne 0 ]]; then
 fi
 
 ## run training
-for i in {1..10}; do
+for i in 11 12 21 22 23 24 25 26 27 28 29 30 
+do
 	printf -v pad_i "%02d" $i
 	mkdir "${REPO}/runs/train/${date}_${pad_i}"
 	python train_detector.py --config "${REPO}/configs/config${pad_i}.txt" --run-dir "${date}_${pad_i}"

@@ -1,0 +1,12 @@
+{
+  "path": "/work3/s210500/datasets/soccer_net/tracking/test/SNMOT-122/img1/000001.jpg",
+  "model": "fb1",
+  "weights": "/work3/s210500/deeplearning2022-footandball/runs/train/20221203_2202_29/model.pth",
+  "ball_threshold": 0.7,
+  "player_threshold": 0.9,
+  "out_video": "out.mp4",
+  "device": "cpu",
+  "run_dir": "20221204_1901_29_122",
+  "metric_path": "/work3/s210500/datasets/soccer_net/tracking/test/SNMOT-122",
+  "debug": false
+}
